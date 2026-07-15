@@ -30,7 +30,7 @@ VERSION_HEADER_PATTERN = re.compile(
     r"^## \[(\d+\.\d+\.\d+|Unreleased)\](?: - \d{4}-\d{2}-\d{2})?$")
 SUBSECTION_PATTERN = re.compile(r"^### (.+)$")
 BULLET_PATTERN = re.compile(r"^- (.+)$")
-ISSUE_REF_PATTERN = re.compile(r"\b(OCPSG-\d+|GC-\d+|AI-\d+|#\d+)\b")
+ISSUE_REF_PATTERN = re.compile(r"\b([A-Z]{1,10}-\d+|#\d+)\b")
 
 
 class ChangelogLinter:
@@ -397,7 +397,7 @@ class ChangelogLinter:
                             )
                         )
 
-            # Fix missing space between references (e.g., "OCPSG-1,OCPSG-2" -> "OCPSG-1, OCPSG-2")
+            # Fix missing space between references (e.g., "JIRA-1,JIRA-2" -> "JIRA-1, JIRA-2")
             refs = ISSUE_REF_PATTERN.findall(self.fixed_lines[i])
             if len(refs) > 1:
                 new_line = self.fixed_lines[i]

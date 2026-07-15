@@ -60,5 +60,25 @@ After formatting:
 - Bug fix JIRA-456, JIRA-789
 ```
 
+## Development
+
+### Running Tests
+
+Install dev dependencies:
+```bash
+pip install pytest
+```
+or
+```bash
+poetry install
+```
+
+Run the test suite:
+```bash
+pytest test_changelog_formatter.py -v
+```
+
+All tests should pass before committing changes.
+
 ## License
 GPLv3

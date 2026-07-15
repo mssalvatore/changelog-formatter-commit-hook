@@ -19,6 +19,10 @@ The formatter enforces the following rules:
 
 The hook automatically fixes all violations when you commit changes to `CHANGELOG.md`.
 
+## Warning!!!
+
+Claude built this. Use with caution.
+
 ## Installation
 
 Add the following to your `.pre-commit-config.yaml`:

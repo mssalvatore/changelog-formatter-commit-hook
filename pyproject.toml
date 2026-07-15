@@ -1,0 +1,16 @@
+repository = "https://github.com/mssalvatore/changelog-formatter-commit-hook"
+
+[project]
+name = "changelog-formatter-commit-hook"
+version = "v1.0.0"
+description = "A pre-commit hook to automatically format CHANGELOG.md files"
+authors = [
+    {name = "Mike Salvatore", email = "mike.s.salvatore@gmail.com"}
+]
+license = {text="GPLv3"}
+
+[project.scripts]
+changelog-formatter = "changelog_formatter:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]

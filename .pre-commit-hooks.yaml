@@ -1,0 +1,6 @@
+- id: changelog-formatter
+  name: "Changelog Formatter"
+  description: "Automatically formats CHANGELOG.md according to Keep a Changelog standards."
+  language: python
+  entry: changelog-formatter
+  files: CHANGELOG\.md$

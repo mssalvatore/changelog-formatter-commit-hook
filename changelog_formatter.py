@@ -507,51 +507,51 @@ class ChangelogLinter:
         while i < len(self.fixed_lines):
             line = self.fixed_lines[i]
 
-            # Only wrap bullet lines and continuation lines
-            if not (line.startswith("- ") or line.startswith("  ")):
+            # Only process bullet items; non-bullet lines pass through unchanged
+            if not line.startswith("- "):
                 result.append(line)
                 i += 1
                 continue
 
-            if len(line) <= MAX_LINE_LENGTH:
-                result.append(line)
-                i += 1
+            # Collect all lines belonging to this bullet (first line +
+            # any continuation lines)
+            bullet_lines = [line]
+            j = i + 1
+            while j < len(self.fixed_lines) and self.fixed_lines[j].startswith("  "):
+                bullet_lines.append(self.fixed_lines[j])
+                j += 1
+
+            # If no line in this bullet exceeds the limit, pass through as-is
+            if all(len(l) <= MAX_LINE_LENGTH for l in bullet_lines):
+                result.extend(bullet_lines)
+                i = j
                 continue
 
-            # Line needs wrapping
-            if line.startswith("- "):
-                # This is a bullet line
-                prefix = "- "
-                content = line[2:]
-            else:
-                # This is a continuation line
-                prefix = "  "
-                content = line[2:]
+            # Join all lines of the bullet into a single string for reflowing
+            full_content = bullet_lines[0][2:]  # strip "- " prefix
+            for continuation in bullet_lines[1:]:
+                full_content += " " + continuation.strip()
 
-            # Find issue references at the end
-            refs = ISSUE_REF_PATTERN.findall(content)
+            # Extract trailing issue references so they stay at the end
+            refs = ISSUE_REF_PATTERN.findall(full_content)
             suffix = ""
             if refs:
-                # Check if refs are at the end (with possible punctuation/parens)
                 for pattern in [
                     r'\s+' + r',\s+'.join(re.escape(r) for r in refs) + r'$',
-                    r'\s+\(' + r',\s+'.join(re.escape(r)
-                                            for r in refs) + r'\)$',
+                    r'\s+\(' + r',\s+'.join(re.escape(r) for r in refs) + r'\)$',
                 ]:
-                    match = re.search(pattern, content)
+                    match = re.search(pattern, full_content)
                     if match:
                         suffix = match.group(0)
-                        content = content[:match.start()]
+                        full_content = full_content[:match.start()]
                         break
 
-            # Wrap the content
-            wrapped = self._wrap_text(
-                content, MAX_LINE_LENGTH - len(prefix), suffix)
+            # Reflow the entire bullet content
+            wrapped = self._wrap_text(full_content, MAX_LINE_LENGTH - 2, suffix)
 
-            # Add wrapped lines
-            for j, wrapped_line in enumerate(wrapped):
-                if j == 0:
-                    result.append(prefix + wrapped_line)
+            for k, wrapped_line in enumerate(wrapped):
+                if k == 0:
+                    result.append("- " + wrapped_line)
                 else:
                     result.append("  " + wrapped_line)
 
@@ -559,13 +559,12 @@ class ChangelogLinter:
                 Violation(
                     line_number=i + 1,
                     rule="Rule 11",
-                    message=f"Fixed: Wrapped line that exceeded {
-                        MAX_LINE_LENGTH} characters",
+                    message=f"Fixed: Wrapped line that exceeded {MAX_LINE_LENGTH} characters",
                     fixed=True,
                 )
             )
 
-            i += 1
+            i = j  # skip all lines consumed by this bullet
 
         self.fixed_lines = result
 

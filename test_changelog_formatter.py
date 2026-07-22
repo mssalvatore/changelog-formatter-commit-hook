@@ -280,6 +280,33 @@ class TestLineLength:
         assert "JIRA-123" in fixed_content
 
 
+class TestLineLengthReflow:
+    """Test that multi-line bullets are reflowed as a unit, not line-by-line."""
+
+    def test_long_first_line_reflows_with_existing_continuations(self, temp_changelog):
+        """Regression test: a long bullet whose first line just exceeds 80 chars
+        should be reflowed together with its existing continuation lines, not
+        wrapped in isolation leaving orphaned words on their own lines."""
+        content = (
+            "- A `OCP_WEEKLY_READINESS_CALCULATION_DAY` environment variable"
+            " that allows setting\n"
+            "  the day of the week when the daily readiness calculation will"
+            " also send\n"
+            "  weekly statistics. OCPSG-1101\n"
+        )
+        temp_changelog.write_text(content)
+        linter = ChangelogLinter(temp_changelog)
+        fixed_content = linter.apply_fixes()
+
+        lines = [l for l in fixed_content.split("\n") if l]
+        for line in lines:
+            assert len(line) <= 80
+
+        # "allows setting" must not appear alone on its own line
+        assert "  allows setting\n" not in fixed_content
+        assert "OCPSG-1101" in fixed_content
+
+
 class TestCompleteFormatting:
     """Integration tests for complete changelog formatting."""
 

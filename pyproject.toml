@@ -7,7 +7,7 @@ description = "A pre-commit hook to automatically format CHANGELOG.md files"
 authors = [
     {name = "Mike Salvatore", email = "mike.s.salvatore@gmail.com"}
 ]
-license = {text="GPLv3"}
+license = "GPL-3.0-only"
 requires-python = ">=3.11"
 
 [dependency-groups]
@@ -17,6 +17,9 @@ dev = [
 
 [project.scripts]
 changelog-formatter = "changelog_formatter:main"
+
+[tool.setuptools]
+py-modules = ["changelog_formatter"]
 
 [build-system]
 requires = ["setuptools", "wheel"]

@@ -21,13 +21,13 @@ class Violation:
     fixed: bool = False
 
 
-VALID_SUBSECTIONS = ["Added", "Changed",
-                     "Deprecated", "Fixed", "Removed", "Security"]
+VALID_SUBSECTIONS = ["Added", "Changed", "Deprecated", "Fixed", "Removed", "Security"]
 SUBSECTION_ORDER = {name: idx for idx, name in enumerate(VALID_SUBSECTIONS)}
 MAX_LINE_LENGTH = 80
 
 VERSION_HEADER_PATTERN = re.compile(
-    r"^## \[(\d+\.\d+\.\d+|Unreleased)\](?: - \d{4}-\d{2}-\d{2})?$")
+    r"^## \[(\d+\.\d+\.\d+|Unreleased)\](?: - \d{4}-\d{2}-\d{2})?$"
+)
 SUBSECTION_PATTERN = re.compile(r"^### (.+)$")
 BULLET_PATTERN = re.compile(r"^- (.+)$")
 ISSUE_REF_PATTERN = re.compile(r"\b([A-Z]{1,10}-\d+|#\d+)\b")
@@ -97,8 +97,11 @@ class ChangelogLinter:
                         Violation(
                             line_number=i + 1,
                             rule="Rule 2",
-                            message=f"Invalid subsection name: '{
-                                subsection_name}'. Must be one of: {', '.join(VALID_SUBSECTIONS)}",
+                            message=(
+                                "Invalid subsection name: "
+                                f"'{subsection_name}'. Must be one of: "
+                                f"{', '.join(VALID_SUBSECTIONS)}"
+                            ),
                         )
                     )
 
@@ -111,7 +114,8 @@ class ChangelogLinter:
             if line.startswith("## ["):
                 if current_version_start is not None and subsections_in_version:
                     self._validate_subsection_order(
-                        current_version_start, subsections_in_version)
+                        current_version_start, subsections_in_version
+                    )
                 current_version_start = i + 1
                 subsections_in_version = []
             elif line.startswith("### "):
@@ -123,20 +127,22 @@ class ChangelogLinter:
 
         if current_version_start is not None and subsections_in_version:
             self._validate_subsection_order(
-                current_version_start, subsections_in_version)
+                current_version_start, subsections_in_version
+            )
 
     def _validate_subsection_order(self, version_line: int, subsections: List[tuple]):
         """Check if subsections are in the correct order."""
         orders = [SUBSECTION_ORDER[name] for line_num, name in subsections]
         if orders != sorted(orders):
-            expected_order = sorted(
-                subsections, key=lambda x: SUBSECTION_ORDER[x[1]])
+            expected_order = sorted(subsections, key=lambda x: SUBSECTION_ORDER[x[1]])
             self.violations.append(
                 Violation(
                     line_number=version_line,
                     rule="Rule 3",
-                    message=f"Subsections out of order. Expected: {
-                        ', '.join(name for _, name in expected_order)}",
+                    message=(
+                        "Subsections out of order. Expected: "
+                        f"{', '.join(name for _, name in expected_order)}"
+                    ),
                 )
             )
 
@@ -205,7 +211,12 @@ class ChangelogLinter:
             # Check for proper spacing (but allow parentheses around references)
             for ref in refs:
                 # Skip if in parentheses like (GC-145594, ...)
-                if f"({ref}" in full_line or f", {ref}" in full_line or f" {ref}" in full_line or full_line.endswith(ref):
+                if (
+                    f"({ref}" in full_line
+                    or f", {ref}" in full_line
+                    or f" {ref}" in full_line
+                    or full_line.endswith(ref)
+                ):
                     continue
                 if f".{ref}" in full_line:
                     continue
@@ -213,8 +224,10 @@ class ChangelogLinter:
                     Violation(
                         line_number=i + 1,
                         rule="Rule 6",
-                        message=f"Issue reference '{
-                            ref}' must be separated from content by a single space",
+                        message=(
+                            "Issue reference "
+                            f"'{ref}' must be separated from content by a single space"
+                        ),
                     )
                 )
 
@@ -232,7 +245,11 @@ class ChangelogLinter:
                         )
 
             # Check for trailing comma after last reference (but not if inside parentheses)
-            if refs and full_line.rstrip().endswith(refs[-1] + ",") and not full_line.rstrip().endswith(")"):
+            if (
+                refs
+                and full_line.rstrip().endswith(refs[-1] + ",")
+                and not full_line.rstrip().endswith(")")
+            ):
                 self.violations.append(
                     Violation(
                         line_number=i + 1,
@@ -257,8 +274,7 @@ class ChangelogLinter:
                     j -= 1
 
                 # Check if this is the first subsection after a version header
-                is_first_subsection = j >= 0 and self.lines[j].startswith(
-                    "## [")
+                is_first_subsection = j >= 0 and self.lines[j].startswith("## [")
 
                 # Check if previous subsection was empty (no bullets)
                 if j >= 0 and self.lines[j].startswith("### "):
@@ -272,8 +288,10 @@ class ChangelogLinter:
                         Violation(
                             line_number=i + 1,
                             rule="Rule 9",
-                            message=f"Subsection must be preceded by exactly {
-                                expected_blanks} blank line(s) (found {blank_count})",
+                            message=(
+                                "Subsection must be preceded by exactly "
+                                f"{expected_blanks} blank line(s) (found {blank_count})"
+                            ),
                         )
                     )
 
@@ -285,8 +303,13 @@ class ChangelogLinter:
                     j -= 1
 
                 # Check if this is right after the main header or preamble
-                if j >= 0 and (self.lines[j].startswith("# ") or
-                               any(self.lines[k].startswith("# ") for k in range(max(0, j - 5), j + 1))):
+                if j >= 0 and (
+                    self.lines[j].startswith("# ")
+                    or any(
+                        self.lines[k].startswith("# ")
+                        for k in range(max(0, j - 5), j + 1)
+                    )
+                ):
                     # Allow any number of blank lines after header/preamble
                     continue
 
@@ -295,8 +318,10 @@ class ChangelogLinter:
                         Violation(
                             line_number=i + 1,
                             rule="Rule 10",
-                            message=f"Version section must be preceded by exactly 2 blank lines (found {
-                                blank_count})",
+                            message=(
+                                "Version section must be preceded by exactly 2 blank lines "
+                                f"(found { blank_count})"
+                            ),
                         )
                     )
 
@@ -309,8 +334,10 @@ class ChangelogLinter:
                         Violation(
                             line_number=i + 1,
                             rule="Rule 11",
-                            message=f"Line exceeds {
-                                MAX_LINE_LENGTH} characters ({len(line)} characters)",
+                            message=(
+                                f"Line exceeds { MAX_LINE_LENGTH} characters "
+                                f"({len(line)} characters)",
+                            ),
                         )
                     )
 
@@ -339,14 +366,19 @@ class ChangelogLinter:
             elif line.startswith("- "):
                 in_bullet = True
             # Fix continuation line indentation
-            elif in_bullet and line and not line.startswith("  ") and not line.startswith("## ") and not line.startswith("### "):
+            elif (
+                in_bullet
+                and line
+                and not line.startswith("  ")
+                and not line.startswith("## ")
+                and not line.startswith("### ")
+            ):
                 # This should be a continuation line
                 self.fixed_lines[i] = "  " + line.lstrip()
                 self.violations.append(
                     Violation(
                         line_number=i + 1,
-                        rule="Rule 4" if not line.startswith(
-                            " ") else "Rule 5",
+                        rule="Rule 4" if not line.startswith(" ") else "Rule 5",
                         message="Fixed: Continuation line indentation",
                         fixed=True,
                     )
@@ -386,8 +418,9 @@ class ChangelogLinter:
                     # Remove trailing comma from the last line of this bullet
                     last_line_idx = i if j == i + 1 else j - 1
                     if self.fixed_lines[last_line_idx].rstrip().endswith(","):
-                        self.fixed_lines[last_line_idx] = self.fixed_lines[last_line_idx].rstrip()[
-                            :-1]
+                        self.fixed_lines[last_line_idx] = self.fixed_lines[
+                            last_line_idx
+                        ].rstrip()[:-1]
                         self.violations.append(
                             Violation(
                                 line_number=i + 1,
@@ -406,7 +439,8 @@ class ChangelogLinter:
                     bad_pattern = f"{refs[k]},{refs[k+1]}"
                     if bad_pattern in new_line:
                         new_line = new_line.replace(
-                            bad_pattern, f"{refs[k]}, {refs[k+1]}")
+                            bad_pattern, f"{refs[k]}, {refs[k+1]}"
+                        )
                         if new_line != self.fixed_lines[i]:
                             self.violations.append(
                                 Violation(
@@ -434,13 +468,14 @@ class ChangelogLinter:
             current_subsection = None
             current_content = []
 
-            while i < len(self.fixed_lines) and not self.fixed_lines[i].startswith("## ["):
+            while i < len(self.fixed_lines) and not self.fixed_lines[i].startswith(
+                "## ["
+            ):
                 line = self.fixed_lines[i]
 
                 if line.startswith("### "):
                     if current_subsection is not None:
-                        subsections.append(
-                            (current_subsection, current_content))
+                        subsections.append((current_subsection, current_content))
                     match = SUBSECTION_PATTERN.match(line)
                     if match:
                         current_subsection = (match.group(1), i)
@@ -467,12 +502,14 @@ class ChangelogLinter:
                     if name in VALID_SUBSECTIONS
                 ]
                 if valid_subsections:
-                    orders = [SUBSECTION_ORDER[name]
-                              for name, _, _ in valid_subsections]
+                    orders = [
+                        SUBSECTION_ORDER[name] for name, _, _ in valid_subsections
+                    ]
                     if orders != sorted(orders):
                         # Need to reorder
                         sorted_subsections = sorted(
-                            valid_subsections, key=lambda x: SUBSECTION_ORDER[x[0]])
+                            valid_subsections, key=lambda x: SUBSECTION_ORDER[x[0]]
+                        )
 
                         # Find where subsections start
                         first_subsection_line = valid_subsections[0][1]
@@ -537,13 +574,13 @@ class ChangelogLinter:
             suffix = ""
             if refs:
                 for pattern in [
-                    r'\s+' + r',\s+'.join(re.escape(r) for r in refs) + r'$',
-                    r'\s+\(' + r',\s+'.join(re.escape(r) for r in refs) + r'\)$',
+                    r"\s+" + r",\s+".join(re.escape(r) for r in refs) + r"$",
+                    r"\s+\(" + r",\s+".join(re.escape(r) for r in refs) + r"\)$",
                 ]:
                     match = re.search(pattern, full_content)
                     if match:
                         suffix = match.group(0)
-                        full_content = full_content[:match.start()]
+                        full_content = full_content[: match.start()]
                         break
 
             # Reflow the entire bullet content
@@ -586,7 +623,7 @@ class ChangelogLinter:
             test_line = " ".join(current_line + [word])
 
             # Check if this is the last word and if suffix fits
-            is_last_word = (i == len(words) - 1)
+            is_last_word = i == len(words) - 1
             line_with_suffix = test_line + suffix if is_last_word else test_line
 
             if len(line_with_suffix) <= max_width:
@@ -637,7 +674,10 @@ class ChangelogLinter:
             # Handle version headers (Rule 10: need 2 blank lines before)
             if line.startswith("## ["):
                 # Special case: first version or right after main header
-                if i > 0 and not any(self.fixed_lines[j].startswith("# ") for j in range(max(0, i - 3), i)):
+                if i > 0 and not any(
+                    self.fixed_lines[j].startswith("# ")
+                    for j in range(max(0, i - 3), i)
+                ):
                     # Count preceding blank lines
                     blank_count = 0
                     j = len(result) - 1
@@ -675,12 +715,10 @@ class ChangelogLinter:
                         j -= 1
 
                     # Check if this is the first subsection after a version header
-                    is_first_subsection = j >= 0 and result[j].startswith(
-                        "## [")
+                    is_first_subsection = j >= 0 and result[j].startswith("## [")
 
                     # Check if previous subsection was empty
-                    prev_was_empty_subsection = j >= 0 and result[j].startswith(
-                        "### ")
+                    prev_was_empty_subsection = j >= 0 and result[j].startswith("### ")
 
                     # Determine expected blank lines
                     if is_first_subsection or prev_was_empty_subsection:
@@ -699,8 +737,10 @@ class ChangelogLinter:
                             Violation(
                                 line_number=i + 1,
                                 rule="Rule 9",
-                                message=f"Fixed: Adjusted blank lines before subsection to {
-                                    expected_blanks}",
+                                message=(
+                                    "Fixed: Adjusted blank lines before "
+                                    f"subsection to {expected_blanks}"
+                                ),
                                 fixed=True,
                             )
                         )
@@ -719,8 +759,7 @@ class ChangelogLinter:
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Lint and format CHANGELOG.md files")
+    parser = argparse.ArgumentParser(description="Lint and format CHANGELOG.md files")
     parser.add_argument(
         "files",
         type=str,
@@ -771,8 +810,10 @@ def main():
 
             if remaining_violations:
                 if not args.quiet:
-                    print(f"\n{len(remaining_violations)} violation(s) in {
-                          filepath} could not be automatically fixed:\n")
+                    print(
+                        f"\n{len(remaining_violations)} violation(s) in { filepath} "
+                        "could not be automatically fixed:\n"
+                    )
                     for v in remaining_violations:
                         print(f"Line {v.line_number} [{v.rule}]: {v.message}")
                     print()
@@ -796,15 +837,21 @@ def main():
             file_path.write_text(fixed_content)
 
             fixes = [v for v in linter.violations if v.fixed]
-            unfixed = [v for v in violations if not any(
-                f.line_number == v.line_number and f.rule == v.rule for f in fixes)]
+            unfixed = [
+                v
+                for v in violations
+                if not any(
+                    f.line_number == v.line_number and f.rule == v.rule for f in fixes
+                )
+            ]
 
             if not args.quiet:
                 if fixes:
                     print(f"Fixed {len(fixes)} violation(s) in {file_path}")
                 if unfixed:
                     print(
-                        f"\n{len(unfixed)} violation(s) could not be automatically fixed:\n")
+                        f"\n{len(unfixed)} violation(s) could not be automatically fixed:\n"
+                    )
                     for v in unfixed:
                         print(f"Line {v.line_number} [{v.rule}]: {v.message}")
                     print()
@@ -820,8 +867,7 @@ def main():
             # Just lint, don't fix
             if violations:
                 if not args.quiet:
-                    print(f"Found {len(violations)} violation(s) in {
-                          file_path}:\n")
+                    print(f"Found {len(violations)} violation(s) in {file_path}:\n")
                     for v in violations:
                         print(f"Line {v.line_number} [{v.rule}]: {v.message}")
                     print()

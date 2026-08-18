@@ -34,7 +34,7 @@ class TestVersionHeaders:
         assert len(version_violations) == 0
 
     def test_invalid_version_format(self, temp_changelog):
-        content = "## [1.2] - 2024-01-15\n"
+        content = "## [not-a-version] - 2024-01-15\n"
         temp_changelog.write_text(content)
         linter = ChangelogLinter(temp_changelog)
         violations = linter.lint()

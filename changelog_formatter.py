@@ -25,8 +25,19 @@ VALID_SUBSECTIONS = ["Added", "Changed", "Deprecated", "Fixed", "Removed", "Secu
 SUBSECTION_ORDER = {name: idx for idx, name in enumerate(VALID_SUBSECTIONS)}
 MAX_LINE_LENGTH = 80
 
+_PEP440_VERSION = (
+    r"\d+(?:\.\d+)*"           # base: N[.N[.N...]]
+    r"(?:(?:a|b|rc)\d+)?"      # pre-release: a1, b2, rc3
+    r"(?:\.post\d+)?"          # post-release: .post1
+    r"(?:\.dev\d+)?"           # dev release: .dev0
+)
+_SEMVER_VERSION = (
+    r"\d+\.\d+\.\d+"           # major.minor.patch
+    r"(?:-[0-9A-Za-z.-]+)?"    # pre-release: -alpha.1
+    r"(?:\+[0-9A-Za-z.-]+)?"   # build metadata: +build.1
+)
 VERSION_HEADER_PATTERN = re.compile(
-    r"^## \[(\d+\.\d+\.\d+|Unreleased)\](?: - \d{4}-\d{2}-\d{2})?$"
+    rf"^## \[(?:{_SEMVER_VERSION}|{_PEP440_VERSION}|Unreleased)\](?: - \d{{4}}-\d{{2}}-\d{{2}})?$"
 )
 SUBSECTION_PATTERN = re.compile(r"^### (.+)$")
 BULLET_PATTERN = re.compile(r"^- (.+)$")

@@ -397,5 +397,71 @@ class TestGenericIssueReferences:
         assert len(ref_violations) == 0
 
 
+class TestSubBullets:
+    """Test handling of sub-bullets (  - ...) within top-level bullets."""
+
+    def test_valid_sub_bullet_no_violations(self, temp_changelog):
+        content = "- Parent entry\n  - Sub-item one\n  - Sub-item two\n"
+        temp_changelog.write_text(content)
+        linter = ChangelogLinter(temp_changelog)
+        violations = linter.lint()
+        assert len(violations) == 0
+
+    def test_sub_bullet_not_merged_into_parent(self, temp_changelog):
+        content = "- Parent entry\n  - Sub-item one\n  - Sub-item two\n"
+        temp_changelog.write_text(content)
+        linter = ChangelogLinter(temp_changelog)
+        fixed_content = linter.apply_fixes()
+        assert "- Parent entry\n  - Sub-item one\n  - Sub-item two\n" == fixed_content
+
+    def test_long_sub_bullet_wrapped_with_four_space_continuation(self, temp_changelog):
+        long_sub = "  - " + "word " * 20 + "end\n"
+        content = "- Parent\n" + long_sub
+        temp_changelog.write_text(content)
+        linter = ChangelogLinter(temp_changelog)
+        fixed_content = linter.apply_fixes()
+        lines = fixed_content.splitlines()
+        sub_lines = [l for l in lines if l.startswith("  - ") or l.startswith("    ")]
+        assert len(sub_lines) > 1, "Long sub-bullet should be wrapped"
+        for continuation in sub_lines[1:]:
+            assert continuation.startswith("    "), "Sub-bullet continuations use 4-space indent"
+        assert all(len(l) <= 80 for l in sub_lines)
+
+    def test_four_space_sub_bullet_continuation_not_flagged(self, temp_changelog):
+        content = "- Parent\n  - Sub-item that wraps\n    onto the next line\n"
+        temp_changelog.write_text(content)
+        linter = ChangelogLinter(temp_changelog)
+        violations = linter.lint()
+        assert len(violations) == 0
+
+    def test_four_space_sub_bullet_continuation_not_reduced(self, temp_changelog):
+        content = "- Parent\n  - Sub-item that wraps\n    onto the next line\n"
+        temp_changelog.write_text(content)
+        linter = ChangelogLinter(temp_changelog)
+        fixed_content = linter.apply_fixes()
+        assert "    onto the next line" in fixed_content
+
+    def test_long_parent_bullet_with_sub_bullets_wraps_parent_only(self, temp_changelog):
+        long_parent = "- " + "word " * 15 + "end. PROJ-1\n"
+        content = long_parent + "  - Sub-item one\n  - Sub-item two\n"
+        temp_changelog.write_text(content)
+        linter = ChangelogLinter(temp_changelog)
+        fixed_content = linter.apply_fixes()
+        assert "  - Sub-item one" in fixed_content
+        assert "  - Sub-item two" in fixed_content
+
+    def test_sub_bullets_with_issue_ref_in_parent(self, temp_changelog):
+        content = (
+            "- Renamed settings. PROJ-123\n"
+            "  - Renamed `FOO` to `BAR`\n"
+            "  - Renamed `BAZ` to `QUX`\n"
+        )
+        temp_changelog.write_text(content)
+        linter = ChangelogLinter(temp_changelog)
+        fixed_content = linter.apply_fixes()
+        assert "  - Renamed `FOO` to `BAR`" in fixed_content
+        assert "  - Renamed `BAZ` to `QUX`" in fixed_content
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

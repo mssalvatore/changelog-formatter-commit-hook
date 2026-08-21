@@ -160,19 +160,23 @@ class ChangelogLinter:
     def check_bullet_formatting(self):
         """Rules 4 & 5: Bullets must start with '- ' and continuations with 2 spaces."""
         in_bullet = False
+        in_sub_bullet = False
         bullet_start_line = None
 
         for i, line in enumerate(self.lines):
             if not line:
                 in_bullet = False
+                in_sub_bullet = False
                 continue
 
             if line.startswith("## ") or line.startswith("### "):
                 in_bullet = False
+                in_sub_bullet = False
                 continue
 
             if line.startswith("- "):
                 in_bullet = True
+                in_sub_bullet = False
                 bullet_start_line = i + 1
                 if line.startswith("-  "):
                     self.violations.append(
@@ -182,6 +186,12 @@ class ChangelogLinter:
                             message="Bullet has extra space after hyphen",
                         )
                     )
+            elif line.startswith("  - ") and in_bullet:
+                # Sub-bullet: valid, update state
+                in_sub_bullet = True
+            elif line.startswith("    ") and in_sub_bullet:
+                # Sub-bullet continuation (4-space indent): valid
+                pass
             elif line.startswith(" ") and in_bullet:
                 if not line.startswith("  ") or line.startswith("   "):
                     self.violations.append(
@@ -201,6 +211,7 @@ class ChangelogLinter:
                         )
                     )
                 in_bullet = False
+                in_sub_bullet = False
 
     def check_issue_references(self):
         """Rules 6, 7, 8: Issue reference format and separation."""
@@ -355,11 +366,13 @@ class ChangelogLinter:
     def _fix_bullet_formatting(self):
         """Fix bullet and continuation line indentation."""
         in_bullet = False
+        in_sub_bullet = False
 
         for i, line in enumerate(self.fixed_lines):
             # Track if we're in a bullet context
             if line.startswith("## ") or line.startswith("### ") or not line:
                 in_bullet = False
+                in_sub_bullet = False
                 continue
 
             # Fix double space after bullet hyphen
@@ -374,8 +387,16 @@ class ChangelogLinter:
                     )
                 )
                 in_bullet = True
+                in_sub_bullet = False
             elif line.startswith("- "):
                 in_bullet = True
+                in_sub_bullet = False
+            elif line.startswith("  - ") and in_bullet:
+                # Sub-bullet: leave as-is
+                in_sub_bullet = True
+            elif line.startswith("    ") and in_sub_bullet:
+                # Sub-bullet continuation (4-space indent): leave as-is
+                pass
             # Fix continuation line indentation
             elif (
                 in_bullet
@@ -395,8 +416,8 @@ class ChangelogLinter:
                     )
                 )
             elif line.startswith("   "):
-                # Too many spaces - check if it's a continuation
-                if in_bullet:
+                # Too many spaces - check if it's a continuation (not a sub-bullet continuation)
+                if in_bullet and not in_sub_bullet:
                     self.fixed_lines[i] = "  " + line.lstrip()
                     self.violations.append(
                         Violation(
@@ -555,17 +576,64 @@ class ChangelogLinter:
         while i < len(self.fixed_lines):
             line = self.fixed_lines[i]
 
-            # Only process bullet items; non-bullet lines pass through unchanged
+            # Sub-bullets ("  - ...") are wrapped independently with 4-space continuations
+            if line.startswith("  - "):
+                sub_lines = [line]
+                j = i + 1
+                while j < len(self.fixed_lines) and self.fixed_lines[j].startswith("    "):
+                    sub_lines.append(self.fixed_lines[j])
+                    j += 1
+
+                if all(len(l) <= MAX_LINE_LENGTH for l in sub_lines):
+                    result.extend(sub_lines)
+                    i = j
+                    continue
+
+                full_content = sub_lines[0][4:]  # strip "  - " prefix
+                for continuation in sub_lines[1:]:
+                    full_content += " " + continuation.strip()
+
+                refs = ISSUE_REF_PATTERN.findall(full_content)
+                suffix = ""
+                if refs:
+                    for pattern in [
+                        r"\s+" + r",\s+".join(re.escape(r) for r in refs) + r"$",
+                        r"\s+\(" + r",\s+".join(re.escape(r) for r in refs) + r"\)$",
+                    ]:
+                        match = re.search(pattern, full_content)
+                        if match:
+                            suffix = match.group(0)
+                            full_content = full_content[: match.start()]
+                            break
+
+                wrapped = self._wrap_text(full_content, MAX_LINE_LENGTH - 4, suffix)
+                for k, wrapped_line in enumerate(wrapped):
+                    if k == 0:
+                        result.append("  - " + wrapped_line)
+                    else:
+                        result.append("    " + wrapped_line)
+
+                self.violations.append(
+                    Violation(
+                        line_number=i + 1,
+                        rule="Rule 11",
+                        message=f"Fixed: Wrapped sub-bullet line that exceeded {MAX_LINE_LENGTH} characters",
+                        fixed=True,
+                    )
+                )
+                i = j
+                continue
+
+            # Only process top-level bullet items; non-bullet lines pass through unchanged
             if not line.startswith("- "):
                 result.append(line)
                 i += 1
                 continue
 
-            # Collect all lines belonging to this bullet (first line +
-            # any continuation lines)
+            # Collect all lines belonging to this top-level bullet (stop at sub-bullets)
             bullet_lines = [line]
             j = i + 1
-            while j < len(self.fixed_lines) and self.fixed_lines[j].startswith("  "):
+            while j < len(self.fixed_lines) and self.fixed_lines[j].startswith("  ") and not self.fixed_lines[j].startswith("  - "):
                 bullet_lines.append(self.fixed_lines[j])
                 j += 1
 
